@@ -1,38 +1,56 @@
 import socket, threading, time, re, sys
-# run sock.shutdown(SHUT_RDWR) before close() on sockets to fully close connection; disallow sending/receiving
-# run sock.close() when scan functions are done
-# have exception if socket.TimeoutError occurs, return false on scan function, showing port is closed
-# for open ports, determine service running given port number and protocol; tpc or udp
+# ping scan next? OS detection?
 
 def help():
     print("Usage: python3 sawyer.py [target IP] [starting port] [ending port]")
     print("If no starting or ending port is specified, port range 1-1024 will be used!")
     sys.exit(0)
 
-def printResults():
-    pass
-
 def resolveService(port, protocol):
-    pass
+    try:
+        service = socket.getservbyport(port, protocol)
+        return service
+    except Exception as err:
+        print(f"[!] An error occured while attempting to resolve port {port}'s service.")
+        print(f"[!] Error recorded: {err}")
 
 def tcpScan(target, port):
-    pass
-    # AP_INET, SOCK_STREAM
-    # sock.settimeout(1)
-    # sock.connect(ip, target port)
-    # send SYN, if SYN-ACK is returned then the port is open, duh
-    # sock.shutdown(SHUT_RDWR) and close() to stop conncetion
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(2)
+    try:
+        sock.connect((target, port))
+        print(f"[+] {target}:{port} is open and running {resolveService(port, "tcp")}")
+    except socket.TimeoutError:
+        print(f"[-] {target}:{port} is closed. Connection timeout.")
+    except OSError.ConnectionError.ConnectionRefusedError as err:
+        print("[!] Connection to this port was refused. Port is in ignored state or some other state that is preventing connectivity!")
+        print("[!] Your network is most likely blocking scan traffic to endpoints.")
+    finally:
+        # stop receiving or sending data and close
+        sock.shutdown(SHUT_RDWR)
+        sock.close()
 
 def udpScan(target, port):
-    pass
-    # AP_INET, SOCK_DGRAM
-    # sock.connect(ip, target port)
-    # sock.send(b'Hello', (target ip, target port)), sock.recvfrom(1024); receive max 1024 bytes from response
-    # if timeout occurs, then there was no response, so port is closed
-    # send UDP packet, if closed, then port unreachable should be sent back, otherwise we can assume it's open
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.settimeout(1)
+    try:
+        sock.connect((target, port))
+        sock.sendto(b'Hello', (target, port))
+        sock.recvfrom(1024) # listen for ICMP response
+        print(f"[+] {target}:{port} is open and running {resolveService(port, "udp")}")
+    except socket.TimeoutError:
+        print(f"[-] {target}:{port} is closed. Connection timeout.")
+    except OSError.ConnectionError.ConnectionRefusedError as err:
+        print("[!] Connection to this port was refused. Port is in ignored state or some other state that is preventing connectivity!")
+        print("[!] Your network is most likely blocking scan traffic to endpoints.")
+    finally:
+        # stop receiving or sending data and close
+        sock.shutdown(SHUT_RDWR)
+        sock.close()
 
 # create scanning threads and go
 def main(target, start, end):
+    print("Sawyer v1.0.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.")
     start_time = time.time()
     threads = []
     for port in range(start, end + 1):
@@ -68,7 +86,7 @@ def args():
             pass
         else:
             print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
-        if (int(sys.argv[2] >= 2)) and (int(sys.argv[2] <= 65535)):
+        if (int(sys.argv[3] >= 2)) and (int(sys.argv[3] <= 65535)):
             pass
         else:
             print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
