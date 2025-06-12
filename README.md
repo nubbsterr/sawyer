@@ -5,6 +5,6 @@
 My own multithreaded (perchance) TCP/UDP (perchance) port scanner written in Python for enumeration.
 
 # agenda
-I dunno how I should start this project so I will quite literally do a bit of Googling and proompting to get a feel for things. I know my networking but I have 0 clue how port scanners actually work under the hood.
+The script is actually done and just needs testing right now. Only issue is that I can't run it on localhost for some reason; nmap shows my ports are in an ignored state, which I have never seen before. Regardless, I'll test `sawyer` in a VM or HTB lab and see how it goes! 
 
-Multithreading will be used to separate scanning jobs so that multiple ports can be scanned in parallel and overall reduce the time taken to enumerate.
+Next steps are to add a ping scan functionality and the ability to do only TCP or only UDP scans at once, etc. QOL changes really.
