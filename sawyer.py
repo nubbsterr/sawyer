@@ -82,15 +82,18 @@ def args():
         help()
 
     try:
-        if (int(sys.argv[2]) >= 1) and (int(sys.argv[1]) < 65535):
+        if (int(sys.argv[2]) >= 1) and (int(sys.argv[3]) < 65535):
             pass
         else:
             print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
+            main(sys.argv[1], 1, 1024)
         if (int(sys.argv[3] >= 2)) and (int(sys.argv[3] <= 65535)):
-            pass
+            main(sys.argv[1], sys.argv[2], sys.argv[3])
         else:
             print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
+            main(sys.argv[1], 1, 1024)
     except IndexError:
         print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
+        main(sys.argv[1], 1, 1024)
 
 args()
