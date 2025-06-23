@@ -1,33 +1,42 @@
-import socket, threading, time, re, sys
+import socket, time, re, sys
+from concurrent.futures import ThreadPoolExecutor
 # ping scan next? OS detection?
 
+refusedports = []
+closedports = []
+
 def help():
-    print("Usage: python3 sawyer.py [target IP] [starting port] [ending port]")
-    print("If no starting or ending port is specified, port range 1-1024 will be used!")
+    print("[+] Usage: python3 sawyer.py <target IP> [mode] [starting port] [ending port]")
+    print("[+] mode can be '--all' for TCP and UDP scans, '--tcp' will do only TCP scans, and '--udp' will do only UDP scans.")
+    print("[!] If no starting or ending port is specified, port range 1-1024 will be used!")
     sys.exit(0)
 
 def resolveService(port, protocol):
     try:
         service = socket.getservbyport(port, protocol)
         return service
-    except Exception as err:
+    except Exception:
         print(f"[!] An error occured while attempting to resolve port {port}'s service.")
-        print(f"[!] Error recorded: {err}")
+        return "unknownm"
 
 def tcpScan(target, port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
+    connected = False
     try:
         sock.connect((target, port))
+        connected = true
         print(f"[+] {target}:{port} is open and running {resolveService(port, "tcp")}")
-    except socket.TimeoutError:
-        print(f"[-] {target}:{port} is closed. Connection timeout.")
-    except OSError.ConnectionError.ConnectionRefusedError as err:
-        print("[!] Connection to this port was refused. Port is in ignored state or some other state that is preventing connectivity!")
-        print("[!] Your network is most likely blocking scan traffic to endpoints.")
+    except ConnectionRefusedError:
+        refusedports.append(port)
+    except Exception:
+        closedports.append(port)
     finally:
-        # stop receiving or sending data and close
-        sock.shutdown(SHUT_RDWR)
+        try:
+            if connected:
+                sock.shutdown(socket.SHUT_RDWR)
+        except OSError as err:
+            print(f"An error occured during shutdown: {err}")
         sock.close()
 
 def udpScan(target, port):
@@ -38,62 +47,67 @@ def udpScan(target, port):
         sock.sendto(b'Hello', (target, port))
         sock.recvfrom(1024) # listen for ICMP response
         print(f"[+] {target}:{port} is open and running {resolveService(port, "udp")}")
-    except socket.TimeoutError:
-        print(f"[-] {target}:{port} is closed. Connection timeout.")
-    except OSError.ConnectionError.ConnectionRefusedError as err:
-        print("[!] Connection to this port was refused. Port is in ignored state or some other state that is preventing connectivity!")
-        print("[!] Your network is most likely blocking scan traffic to endpoints.")
+    except ConnectionRefusedError:
+        refusedports.append(port)
+    except Exception:
+        closedports.append(port)
     finally:
-        # stop receiving or sending data and close
-        sock.shutdown(SHUT_RDWR)
+        # no need to shutdown since UDP is connectionless; no connection to shutdown really
         sock.close()
 
 # create scanning threads and go
-def main(target, start, end):
+def main(target, start, end, mode):
     print("Sawyer v1.0.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.")
     start_time = time.time()
-    threads = []
-    for port in range(start, end + 1):
-        tcp_thread = threading.Thread(target=tcpScan, args=(target, port))
-        threads.append(tcp_thread)
-        tcp_thread.start()
+    with ThreadPoolExecutor(max_workers=100) as executor:
+        futures = []
+        for port in range(start, end + 1):
+            if mode == "udp":
+                futures.append(executor.submit(udpScan, target, port))
+            elif mode == "tcp":
+                futures.append(executor.submit(tcpScan, target, port))
+            elif mode == "both":
+                futures.append(executor.submit(tcpScan, target, port))
+                futures.append(executor.submit(udpScan, target, port))
+        # Wait for all tasks to complete
+        for future in futures:
+            future.result()
 
-        udp_thread = threading.Thread(target=udpScan, args=(target, port))
-        threads.append(udp_thread)
-        udp_thread.start()
-
-        # Wait for all threads to finish
-        for thread in threads:
-            thread.join()
     end_time = time.time()
-    print(f"[+] Scan complete. Took {end_time - start_time} seconds")
+    closedports.sort()
+    refusedports.sort()
+    print(f"[+] Scan complete. Took {end_time - start_time} seconds. Scanned {(end - start) + 1} ports.")
+    print(f"[+] Closed ports: {closedports}")
+    print(f"[+] Refused ports: {refusedports}")
 
 # verify that passed arguments are valid before scanning
 def args():
-    try:
-        # most painful regex match i have ever had the displeasure to see
-        if re.match(r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", sys.argv[1]):
-            pass
-        else:
-            print("[x] Specify an IPv4 address! No domains or IPv6 trash pls and thx.")
-            help()
-    except IndexError:
-        print("[x] No target IP was specified!")
+    if "help" in sys.argv:
         help()
 
-    try:
-        if (int(sys.argv[2]) >= 1) and (int(sys.argv[3]) < 65535):
-            pass
-        else:
-            print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
-            main(sys.argv[1], 1, 1024)
-        if (int(sys.argv[3] >= 2)) and (int(sys.argv[3] <= 65535)):
-            main(sys.argv[1], sys.argv[2], sys.argv[3])
-        else:
-            print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
-            main(sys.argv[1], 1, 1024)
-    except IndexError:
-        print("[!] No proper port range was supplied. Ports 1-1024 will be scanned by default!")
-        main(sys.argv[1], 1, 1024)
+    if (len(sys.argv) < 2) or (not re.match(r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", sys.argv[1])):
+        print("[x] Specify an IPv4 address! No domains or IPv6 trash pls and thx.")
+        help()
+    
+    mode = "tcp"
+    if "--tcp" in sys.argv:
+        mode = "tcp"
+    elif "--udp" in sys.argv:
+        mode = "udp"
+    elif "--all" in sys.argv:
+        mode = "both"
+
+    start, end = 1, 1024
+    # are all arguments supplied
+    if len(sys.argv) >= 4:
+        start = int(sys.argv[2])
+        end = int(sys.argv[3])
+        if not (1 <= start <= end <= 65535):
+            print(f"[!] Invalid port range. Port range must be between 1 and 65535. Using default range 1-1024.")
+            start, end = 1, 1024
+    else:
+        print(f"[!] Invalid port range. Port range must be between 1 and 65535. Using default range 1-1024.")
+        start, end = 1, 1024
+    main(sys.argv[1], start, end, mode)
 
 args()
