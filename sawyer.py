@@ -6,8 +6,8 @@ refusedports = []
 closedports = []
 
 def help():
-    print("[+] Usage: python3 sawyer.py <target IP> [mode] [starting port] [ending port]")
-    print("[+] mode can be '--all' for TCP and UDP scans, '--tcp' will do only TCP scans, and '--udp' will do only UDP scans.")
+    print("[+] Usage: python3 sawyer.py <target IP> [starting port] [ending port] [--udp]")
+    print("[+] The '--udp' flag can be set to perform UDP scans. By default, TCP scans are performed.")
     print("[!] If no starting or ending port is specified, port range 1-1024 will be used!")
     sys.exit(0)
 
@@ -58,6 +58,7 @@ def udpScan(target, port):
 # create scanning threads and go
 def main(target, start, end, mode):
     print("Sawyer v1.0.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.")
+	print("[-] Refused ports are ports that refused a connection. They may be in an ignored state.")
     start_time = time.time()
     with ThreadPoolExecutor(max_workers=100) as executor:
         futures = []
@@ -66,9 +67,6 @@ def main(target, start, end, mode):
                 futures.append(executor.submit(udpScan, target, port))
             elif mode == "tcp":
                 futures.append(executor.submit(tcpScan, target, port))
-            elif mode == "both":
-                futures.append(executor.submit(tcpScan, target, port))
-                futures.append(executor.submit(udpScan, target, port))
         # Wait for all tasks to complete
         for future in futures:
             future.result()
@@ -77,6 +75,7 @@ def main(target, start, end, mode):
     closedports.sort()
     refusedports.sort()
     print(f"[+] Scan complete. Took {end_time - start_time} seconds. Scanned {(end - start) + 1} ports.")
+	input("[-] Show closed/refused ports? [Enter to continue, Crtl+C to exit] ")
     print(f"[+] Closed ports: {closedports}")
     print(f"[+] Refused ports: {refusedports}")
 
@@ -90,12 +89,8 @@ def args():
         help()
     
     mode = "tcp"
-    if "--tcp" in sys.argv:
-        mode = "tcp"
-    elif "--udp" in sys.argv:
+    if "--udp" in sys.argv:
         mode = "udp"
-    elif "--all" in sys.argv:
-        mode = "both"
 
     start, end = 1, 1024
     # are all arguments supplied
