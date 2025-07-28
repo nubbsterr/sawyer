@@ -8,4 +8,4 @@ My own multithreaded TCP/UDP port scanner written in Python for enumeration.
 Appears to work a bit thus far. Still needs some testing in lab environments to see if the scanning actually works lol. It runs really fast which is nice. I found that Futures runs waaaay faster than Threading, but I'm like certain it's cuz I was missing sumn w/ my scripting logic.
 
 # dependencies
-Make sure to have all needed dependencies. I used `pipreqs` to create the `requirements.txt` list but if anything is missing please DM me on Discord @ nubbieeee.
+No external packages are needed for running this scanner, according to `pipreqs`. DM me on Discord @ nubbieeee if you have questions tho.
