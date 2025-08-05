@@ -10,6 +10,14 @@ openports_lock = threading.Lock()
 
 refusedports = []
 refusedports_lock = threading.Lock()
+
+# ascii escape codes for colour
+RED = '\033[31m'
+GREEN = '\033[32m'
+RESET = '\033[0m'
+ORANGE = '\033[33m'
+#BLUE = '\033[34m'
+
 def help():
     print("Usage: python3 sawyer.py target [starting port [ending port] [--udp]")
     print("--udp: Perform UDP scans. Experimental feature. By default, TCP scans are performed.\n")
@@ -22,7 +30,7 @@ def resolveService(port, protocol):
         service = socket.getservbyport(port, protocol)
         return service
     except Exception:
-        print(f"[-] An error occurred while attempting to resolve port {port}'s service.")
+        print(f"{ORANGE}[-] An error occurred while attempting to resolve port {port}'s service.{RESET}")
         return "Unknown service"
 
 def tcpScan(target, port):
@@ -64,15 +72,15 @@ def udpScan(target, port):
 
 def isHostUp(target):
     if subprocess.run(["ping", "-c", "1", target], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
-        print(f"[+] Host ({target}) is up!\n")
+        print(f"{GREEN}[+] Host ({target}) is up!{RESET}\n")
     else:
-        print(f"[x] Host ({target}) is down. Check your network connections.)\n")
+        print(f"{RED}[x] Host ({target}) is down. Check your network connections.){RESET}\n")
         sys.exit(1)
 
 # create scanning threads and go
 def main(target, start, end, mode):
-    print("\n[+] Sawyer v2.1.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.")
-    print(f"[+] Scanning {target}. First confirming if host is live...")
+    print(f"\n{GREEN}[+] Sawyer v2.1.1 by nubb (nubbsterr). A multithreaded port scanner written in Python.{RESET}")
+    print(f"{GREEN}[+] Scanning {target}. First confirming if host is live...{RESET}")
     isHostUp(target)
 
     start_time = time()
@@ -80,7 +88,7 @@ def main(target, start, end, mode):
     ports = list(range(start, end + 1)) + [port for port in extraports if (port < start) or (port  > end)]
 
     workers = min(100, max(10, len(ports) // 20)) # max of 100 workers or min of 10, adjust to port range
-    print(f"[+] Using {workers} workers for {len(ports)} ports.")
+    print(f"{GREEN}[+] Using {workers} workers for {len(ports)} ports.{RESET}")
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         futures = []
@@ -96,14 +104,14 @@ def main(target, start, end, mode):
             future.result()
 
     end_time = time()
-    print(f"[+] Scan complete. Took {round(end_time - start_time, 2)} seconds. Scanned {len(ports)} ports.\n")
+    print(f"{GREEN}[+] Scan complete. Took {round(end_time - start_time, 2)} seconds. Scanned {len(ports)} ports.{RESET}\n")
     sortedopen = sorted(openports)
     sortedrefused = sorted(refusedports)
     # very iffy but it works lol, tabulate broken
-    print("Open ports:")
+    print(f"{GREEN}Open ports:{RESET}")
     for service in sortedopen:
         print(service)
-    print("\nRefused/filtered ports:")
+    print(f"\n{RED}Refused/filtered ports:{RESET}")
     for service in sortedrefused:
         print(service)
 
@@ -113,7 +121,7 @@ def args():
         help()
 
     if (len(sys.argv) < 2) or (not match(r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$", sys.argv[1])):
-        print("[-] Specify an IPv4 address! No domains or IPv6 trash pls and thx.")
+        print(f"{RED}[x] Specify an IPv4 address! No domains or IPv6 trash pls and thx.{RESET}")
         help()
     
     mode = "tcp"
@@ -127,13 +135,13 @@ def args():
             start = int(sys.argv[2])
             end = int(sys.argv[3])
             if not (1 <= start <= end <= 65535):
-                print(f"[-] Invalid port range. Port range must be between 1 and 65535. Using default range 1-1024.")
+                print(f"{ORANGE}[-] Invalid port range. Port range must be between 1 and 65535. Using default range 1-1024.{RESET}")
                 start, end = 1, 1024
         except Exception as err:
-            print(f"[-] An exeception occurred when evaluating port range. Using default range 1-1024. Error: {err}")
+            print(f"{ORANGE}[-] An exeception occurred when evaluating port range. Using default range 1-1024. Error: {RESET}{err}")
             start, end = 1, 1024
     else:
-        print(f"[-] No port range was given. Using default range 1-1024.")
+        print(f"{ORANGE}[-] No port range was given. Using default range 1-1024.{RESET}")
         start, end = 1, 1024
     main(sys.argv[1], start, end, mode)
 
