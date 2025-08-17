@@ -19,10 +19,10 @@ YELLOW = '\033[33m'
 #BLUE = '\033[34m'
 
 def help():
-    print("Usage: python3 sawyer.py target [starting port [ending port] [--udp]")
+    print("Usage: python3 nubbscan.py target [starting port [ending port] [--udp]")
     print("--udp: Perform UDP scans. Experimental feature. By default, TCP scans are performed.\n")
     print("If no starting or ending port is specified, port range 1-1024 will be used!")
-    print("Sawyer automatically scans 2049, 3389 and 5985, provided the port range is lower/greater than said ports.")
+    print("Nubbscan automatically scans 2049, 3389 and 5985, provided the port range is lower/greater than said ports.")
     sys.exit(0)
 
 def resolveService(port, protocol):
@@ -109,7 +109,7 @@ def resolveTarget(target):
 
 # create scanning threads and go
 def main(target, start, end, mode):
-    print(f"\n{GREEN}[+] Sawyer v2.2.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.{RESET}")
+    print(f"\n{GREEN}[+] Nubbscan v2.2.0 by nubb (nubbsterr). A multithreaded port scanner written in Python.{RESET}")
     print(f"{GREEN}[+] Scanning {target}. First confirming if host is live...{RESET}")
     isHostUp(target)
 
